@@ -57,7 +57,7 @@ module ActiveRecord
                   stmt.close
                 end
               else
-                puts sql unless @statements[sql]
+                p [object_id, sql] unless @statements[sql]
                 stmt = @statements[sql] ||= conn.prepare(sql)
                 cols = stmt.columns
                 stmt.reset!
