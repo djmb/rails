@@ -54,7 +54,7 @@ module ActiveRecord
 
       private
         def next_iteration
-          @ids, @yielded_relation, @offsets = iterate
+          iterate
 
           if ids.present? && ids.last.nil?
             raise ArgumentError.new("Primary key not included in the custom select clause")
@@ -87,7 +87,9 @@ module ActiveRecord
             yielded_relation.send(:load_records, records)
           end
 
-          [ids, yielded_relation, offsets]
+          @ids = ids
+          @yielded_relation = yielded_relation
+          @offsets = offsets
         end
 
         def iterate_using_ranges(batch_relation)
@@ -100,7 +102,9 @@ module ActiveRecord
           end
           offsets = [*ids.last]
 
-          [ids, yielded_relation, offsets]
+          @ids = ids
+          @yielded_relation = yielded_relation
+          @offsets = offsets
         end
 
         def iterate_default(batch_relation)
@@ -111,7 +115,9 @@ module ActiveRecord
             yielded_relation = relation.where(relation.primary_key => ids)
           end
 
-          [ids, yielded_relation, offsets]
+          @ids = ids
+          @yielded_relation = yielded_relation
+          @offsets = offsets
         end
 
         def next_batch_relation
