@@ -9,7 +9,7 @@ module ActiveRecord
       attr_reader :primary_key_column, :primary_key_order_only, :primary_key_position
       attr_reader :remaining, :ids, :yielded_relation, :offsets
 
-      delegate :primary_key, :where, :limit_value, :table, :to_sql, :klass, :predicate_builder, :connection, :arel_table, to: :relation
+      delegate :limit_value, :table, :to_sql, :klass, :predicate_builder, :connection, :arel_table, to: :relation
 
       def initialize(of:, start:, finish:, relation:, order:, use_ranges:, load:)
         @relation = relation
@@ -23,7 +23,7 @@ module ActiveRecord
 
         empty_scope = to_sql == klass.unscoped.all.to_sql
 
-        @primary_key_column = relation.send(:arel_column, primary_key)
+        @primary_key_column = relation.send(:arel_column, relation.primary_key)
         @primary_key_order_only = order_columns == [primary_key_column]
         @primary_key_position = order_columns.index(primary_key_column)
 
@@ -81,9 +81,9 @@ module ActiveRecord
             if primary_key_order_only
               offsets = [records.last.id]
             else
-              offsets = Array(batch_relation.where(primary_key => ids.last).pick(*order_columns))
+              offsets = Array(batch_relation.where(relation.primary_key => ids.last).pick(*order_columns))
             end
-            yielded_relation = batch_relation.where(primary_key => ids)
+            yielded_relation = batch_relation.where(relation.primary_key => ids)
             yielded_relation.send(:load_records, records)
           end
 
@@ -91,7 +91,7 @@ module ActiveRecord
         end
 
         def iterate_using_ranges(batch_relation)
-          ids = batch_relation.pluck(primary_key)
+          ids = batch_relation.pluck(relation.primary_key)
           finish = ids.last
           if finish
             yielded_relation = relation.send(:apply_finish_limit, batch_relation, finish, orderings)
@@ -108,7 +108,7 @@ module ActiveRecord
           ids = primary_key_order_only ? order_value_rows : order_value_rows.map { |row| row[primary_key_position] }
           if order_value_rows.present?
             offsets = Array(order_value_rows.last)
-            yielded_relation = where(primary_key => ids)
+            yielded_relation = relation.where(relation.primary_key => ids)
           end
 
           [ids, yielded_relation, offsets]
