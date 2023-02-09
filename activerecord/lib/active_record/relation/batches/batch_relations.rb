@@ -54,7 +54,10 @@ module ActiveRecord
 
       private
         def next_iteration
-          @ids, @yielded_relation, @offsets = iterate
+          batch_relation = next_batch_relation
+          @ids = @yielded_relation = @offsets = nil
+
+          iterate(batch_relation)
 
           if ids.present? && ids.last.nil?
             raise ArgumentError.new("Primary key not included in the custom select clause")
@@ -63,14 +66,14 @@ module ActiveRecord
           @remaining -= ids.size if remaining
         end
 
-        def iterate
+        def iterate(batch_relation)
           case iterate_by
           when :loading_records
-            iterate_loading_records(next_batch_relation)
+            iterate_loading_records(batch_relation)
           when :using_ranges
-            iterate_using_ranges(next_batch_relation)
+            iterate_using_ranges(batch_relation)
           else
-            iterate_default(next_batch_relation)
+            iterate_default(batch_relation)
           end
         end
 
@@ -79,15 +82,17 @@ module ActiveRecord
           ids = records.map(&:id)
           if ids.present?
             if primary_key_order_only
-              offsets = [records.last.id]
+              offsets = records.last.id
             else
-              offsets = Array(batch_relation.where(primary_key => ids.last).pick(*order_columns))
+              offsets = batch_relation.where(primary_key => ids.last).pick(*order_columns)
             end
             yielded_relation = batch_relation.where(primary_key => ids)
             yielded_relation.send(:load_records, records)
           end
 
-          [ids, yielded_relation, offsets]
+          @ids = ids
+          @yielded_relation = yielded_relation
+          @offsets = offsets
         end
 
         def iterate_using_ranges(batch_relation)
@@ -98,20 +103,24 @@ module ActiveRecord
             yielded_relation = yielded_relation.except(:limit, :order)
             yielded_relation.skip_query_cache!(false)
           end
-          offsets = [*ids.last]
+          offsets = ids.last
 
-          [ids, yielded_relation, offsets]
+          @ids = ids
+          @yielded_relation = yielded_relation
+          @offsets = offsets
         end
 
         def iterate_default(batch_relation)
           order_value_rows = batch_relation.pluck(*order_columns)
           ids = primary_key_order_only ? order_value_rows : order_value_rows.map { |row| row[primary_key_position] }
           if order_value_rows.present?
-            offsets = Array(order_value_rows.last)
+            offsets = order_value_rows.last
             yielded_relation = where(primary_key => ids)
           end
 
-          [ids, yielded_relation, offsets]
+          @ids = ids
+          @yielded_relation = yielded_relation
+          @offsets = offsets
         end
 
         def next_batch_relation
@@ -131,10 +140,10 @@ module ActiveRecord
         end
 
         def offset_clause
-          if orderings.size == 1
-            offset_from_single_column(orderings.first, offsets.first)
-          else
+          if offsets.is_a?(Array)
             offset_from_multiple_columns
+          else
+            offset_from_single_column(orderings.first, offsets)
           end
         end
 
