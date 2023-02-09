@@ -100,7 +100,7 @@ module ActiveRecord
             yielded_relation = yielded_relation.except(:limit, :order)
             yielded_relation.skip_query_cache!(false)
           end
-          offsets = [*ids.last]
+          offsets = *ids.last
 
           @ids = ids
           @yielded_relation = yielded_relation
@@ -111,7 +111,7 @@ module ActiveRecord
           order_value_rows = batch_relation.pluck(*order_columns)
           ids = primary_key_order_only ? order_value_rows : order_value_rows.map { |row| row[primary_key_position] }
           if order_value_rows.present?
-            offsets = Array(order_value_rows.last)
+            offsets = order_value_rows.last
             yielded_relation = relation.where(relation.primary_key => ids)
           end
 
