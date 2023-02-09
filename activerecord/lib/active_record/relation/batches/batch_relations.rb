@@ -79,7 +79,7 @@ module ActiveRecord
           ids = records.map(&:id)
           if ids.present?
             if primary_key_order_only
-              offsets = [records.last.id]
+              offsets = records.last.id
             else
               offsets = Array(batch_relation.where(relation.primary_key => ids.last).pick(*order_columns))
             end
@@ -138,7 +138,7 @@ module ActiveRecord
 
         def offset_clause
           if orderings.size == 1
-            offset_from_single_column(orderings.first, offsets.first)
+            offset_from_single_column(orderings.first, offsets)
           else
             offset_from_multiple_columns
           end
