@@ -21,6 +21,7 @@ module ActiveRecord
       autoload :EncryptingOnlyEncryptor
       autoload :DeterministicKeyProvider
       autoload :Encryptor
+      autoload :EncryptorWithoutCompression
       autoload :EnvelopeEncryptionKeyProvider
       autoload :Errors
       autoload :ExtendedDeterministicQueries
