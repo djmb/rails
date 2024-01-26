@@ -247,6 +247,14 @@ class LogSubscriberTest < ActiveRecord::TestCase
     assert_equal 0, @logger.logged(:debug).size
   end
 
+  def test_color_binary_data
+    logger = TestDebugLogSubscriber.new
+    logger.colorize_logging = true
+    logger.sql(Event.new(0, sql: "INSERT INTO `my_table` (`binary_value) VALUES (x'\x82\xA1')"))
+    wait
+    assert @logger.logged(:debug).last.include?(ActiveRecord::LogSubscriber::MAGENTA)
+  end
+
   if ActiveRecord::Base.connection.prepared_statements
     def test_where_in_binds_logging_include_attribute_names
       Developer.where(id: [1, 2, 3, 4, 5]).load

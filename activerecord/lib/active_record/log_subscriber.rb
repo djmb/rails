@@ -125,6 +125,8 @@ module ActiveRecord
         else
           MAGENTA
         end
+      rescue ArgumentError
+        MAGENTA
       end
 
       def logger

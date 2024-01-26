@@ -73,6 +73,8 @@ module ActiveSupport
 
         def logged(level)
           @logged[level].compact.map { |l| l.to_s.strip }
+        rescue Encoding::CompatibilityError
+          @logged[level].compact.map { |l| l.to_s }
         end
 
         def flush
