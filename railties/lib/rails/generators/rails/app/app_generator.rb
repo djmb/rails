@@ -310,6 +310,7 @@ module Rails
             :skip_hotwire,
             :skip_javascript,
             :skip_jbuilder,
+            :skip_solid_cache,
             :skip_system_test,
           ],
           api: [
@@ -466,6 +467,12 @@ module Rails
       def create_devcontainer_files
         return if skip_devcontainer? || options[:dummy_app]
         build(:devcontainer)
+      end
+
+      def install_solid_cache
+        unless skip_solid_cache?
+          rails_command "solid_cache:install", inline: false, capture: options[:quiet]
+        end
       end
 
       def delete_app_assets_if_api_option

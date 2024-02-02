@@ -25,7 +25,11 @@ Rails.application.configure do
     config.action_controller.enable_fragment_cache_logging = true
 
     <%- end -%>
+    <%- if options[:skip_solid_cache] -%>
     config.cache_store = :memory_store
+    <%- else -%>
+    config.cache_store = :solid_cache_store
+    <% end %>
     config.public_file_server.headers = { "Cache-Control" => "public, max-age=#{2.days.to_i}" }
   else
     config.action_controller.perform_caching = false

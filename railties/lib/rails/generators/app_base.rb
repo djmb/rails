@@ -154,6 +154,7 @@ module Rails
           css_gemfile_entry,
           jbuilder_gemfile_entry,
           cable_gemfile_entry,
+          solid_cache_gemfile_entry,
         ].flatten.compact.select(&@gem_filter)
       end
 
@@ -382,6 +383,10 @@ module Rails
 
       def skip_asset_pipeline? # :doc:
         options[:skip_asset_pipeline]
+      end
+
+      def skip_solid_cache?
+        options[:skip_solid_cache]
       end
 
       def skip_sprockets?
@@ -622,6 +627,12 @@ module Rails
 
         comment = "Use Redis adapter to run Action Cable in production"
         GemfileEntry.new("redis", ">= 4.0.1", comment, {}, true)
+      end
+
+      def solid_cache_gemfile_entry
+        return if options[:skip_solid_cache]
+
+        GemfileEntry.new("solid_cache", ">= 0.5.3", "Use Solid Cache for the Rails cache", {}, false)
       end
 
       def bundle_command(command, env = {})

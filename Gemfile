@@ -38,6 +38,8 @@ gem "cgi", ">= 0.3.6", require: false
 
 gem "prism"
 
+gem "solid_cache", ">= 0.5.3"
+
 group :lint do
   gem "syntax_tree", "6.1.1", require: false
 end

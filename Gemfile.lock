@@ -515,6 +515,10 @@ GEM
       rake
       serverengine (~> 2.0.5)
       thor
+    solid_cache (0.5.3)
+      activejob (>= 7)
+      activerecord (>= 7)
+      railties (>= 7)
     sorted_set (1.0.3)
       rbtree
       set (~> 1.0)
@@ -653,6 +657,7 @@ DEPENDENCIES
   selenium-webdriver (>= 4.11.0)
   sidekiq
   sneakers
+  solid_cache (>= 0.5.3)
   sprockets-rails (>= 2.0.0)
   sqlite3 (~> 1.6, >= 1.6.6)
   stackprof
