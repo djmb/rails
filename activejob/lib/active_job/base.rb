@@ -12,6 +12,7 @@ require "active_job/log_subscriber"
 require "active_job/logging"
 require "active_job/instrumentation"
 require "active_job/execution_state"
+require "active_job/continuation"
 
 module ActiveJob # :nodoc:
   # = Active Job \Base
