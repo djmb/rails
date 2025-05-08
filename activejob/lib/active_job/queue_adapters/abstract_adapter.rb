@@ -14,6 +14,10 @@ module ActiveJob
       def enqueue_at(job, timestamp)
         raise NotImplementedError
       end
+
+      def stopping?
+        false
+      end
     end
   end
 end
