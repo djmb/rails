@@ -4,11 +4,39 @@ module ActiveJob
   class Continuation
     # = Active Job Continuation Cursor
     #
-    # Cursors track the progress within a specific step. They can be
-    # built with custom validation and advancement logic.
+    # The default cursor is OffsetCursor, which uses integer values.
     #
-    # The default cursor is OffsetCursor, which uses integer values
-    # and increments by 1 with each advancement.
+    # You can create custom cursor classes calling +Cursor.build+
+    #
+    # === Example
+    #
+    # NestedOffsetCursor shows how to create a cursor that we can use to track progress in nested loops.
+    #
+    #   NestedOffsetCursor = Cursor.build \
+    #     default: ->() { [] },
+    #     validate: ->(value) { raise "Cursor value must be an array of Integers" unless value.is_a?(Array) && value.all?(Integer) },
+    #     advance: ->(value) { value.empty? ? value : value[0..-2] + [ value.last + 1 ] }
+    #
+    # You can use this cursor by passing +cursor_type: NestedOffsetCursor+ to the step method:
+    #
+    #   class ProcessImportJob < ApplicationJob
+    #     include ActiveJob::Continuable
+    #
+    #     def perform
+    #       import = Import.find(import_id)
+    #
+    #       step :process_records, cursor_type: NestedOffsetCursor do |step|
+    #         import.outer_records.find_each(start: step.cursor[0]) do |outer_record|
+    #           outer_record.inner_records.find_each(start: step.cursor[1]) do |inner_record|
+    #             inner_record.process
+    #             step.checkpoint! [ outer_record.id, inner_record.id ]
+    #           end
+    #           step.checkpoint! [ outer_record.id ]
+    #         end
+    #       end
+    #     end
+    #   end
+    #
     class Cursor
       # The current value of the cursor
       attr_reader :value

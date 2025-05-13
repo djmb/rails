@@ -82,6 +82,10 @@ end
 This works with any class that mixes in GlobalID::Identification, which
 by default has been mixed into Active Record classes.
 
+## Continuations
+
+Continuations allow jobs to be interrupted and resumed. You can find out more at [ActiveJob::Continuation].
+
 
 ## Supported queuing systems
 

@@ -3,35 +3,9 @@
 module ActiveJob
   # = Active Job Continuable
   #
-  # Continuable provides a mechanism for jobs to be broken down into steps
-  # that can be interrupted and resumed. This allows long-running jobs
-  # to make incremental progress, and ensures they can recover automatically
-  # from transient failures without repeating completed work.
+  # Mix ActiveJob::Continuable into your job to enable continuations.
   #
-  # Include this module in your job class to enable continuations:
-  #
-  #   class ProcessImportJob < ApplicationJob
-  #     include ActiveJob::Continuable
-  #
-  #     def perform(import_id)
-  #       import = Import.find(import_id)
-  #
-  #       step(:validate) { import.validate! }
-  #
-  #       step(:process_records) do |s|
-  #         import.records.each_with_index do |record, i|
-  #           next if i < s.cursor
-  #           process_record(record)
-  #           s.checkpoint!(i)
-  #         end
-  #       end
-  #
-  #       step(:finalize) { import.finalize! }
-  #     end
-  #   end
-  #
-  # If the job is interrupted during execution (for example, by a worker
-  # shutdown), it will automatically be retried and resumed from where it left off.
+  # See +ActiveJob::Continuation+ for usage.
   module Continuable
     extend ActiveSupport::Concern
 
@@ -74,12 +48,10 @@ module ActiveJob
       end
     end
 
-    # Serializes the job, including the continuation state.
     def serialize
       super.merge(CONTINUATION_KEY => continuation.to_h)
     end
 
-    # Deserializes the job and restores the continuation state.
     def deserialize(job_data)
       super
       @continuation = Continuation.new(self, job_data.fetch(CONTINUATION_KEY, {}))

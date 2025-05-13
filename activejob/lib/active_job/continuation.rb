@@ -8,24 +8,134 @@ require "active_job/continuation/step"
 module ActiveJob
   # = Active Job Continuation
   #
-  # The continuation provides the internal machinery for managing
-  # a job's progress through a sequence of steps. It tracks which
-  # steps have been completed and the current position within the
-  # running step.
+  # Continuations provide a mechanism for interrupting and resuming jobs. This allows
+  # long running jobs to make progress across application restarts.
   #
-  # This is used internally by Active Job and shouldn't normally be
-  # instantiated directly. Instead, include the ActiveJob::Continuable
-  # module in your job class and use the +step+ method.
+  # Jobs should include the [ActiveJob::Continuable] module to enable continuations.
+  #
+  # Use the `step` method to define the steps in your job. Steps can use an optional
+  # cursor to track progress in the step.
+  #
+  # You can pass a block to the step method:
+  #
+  #   class ProcessImportJob < ApplicationJob
+  #     include ActiveJob::Continuable
+  #
+  #     def perform(import_id)
+  #       import = Import.find(import_id)
+  #
+  #       step(:validate) { import.validate! }
+  #
+  #       step(:process_records) do |step|
+  #         import.records.find_each(start: step.cursor)
+  #           record.process
+  #           step.checkpoint!(record.id)
+  #         end
+  #       end
+  #
+  #       step(:finalize) { import.finalize! }
+  #     end
+  #   end
+  #
+  # Or if you don't want to use a block, you can define a method with the same name as the step.
+  # The method can either take no arguments or a single argument for the step object.
+  #
+  #   class ProcessImportJob < ApplicationJob
+  #     include ActiveJob::Continuable
+  #
+  #     def perform(import_id)
+  #       @import = Import.find(import_id)
+  #
+  #       step :validate
+  #       step :process_records
+  #       step :finalize
+  #     end
+  #
+  #     private
+  #       def validate
+  #         @import.validate!
+  #       end
+  #
+  #       def process_records(step)
+  #         @import.records.find_each(start: step.cursor) do |record|
+  #           record.process
+  #           step.checkpoint!(record.id)
+  #         end
+  #       end
+  #
+  #       def finalize
+  #         @import.finalize!
+  #       end
+  #   end
+  #
+  # === Cursors
+  #
+  # Cursors are used to track progress in a step. The default cursor is ActiveJob:Continuation::OffsetCursor.
+  #
+  # Each cursor wraps a cursor value. The step.cursor method returns the wrapped value.
+  # When calling step.checkpoint!(value) you provide a checkpoint value for the work you have just completed.
+  #
+  # You define a new cursor by calling ActiveJob::Continuation::Cursor.build, which returns a new
+  # cursor class that inherits from ActiveJob::Continuation::Cursor.
+  #
+  # Here's how OffsetCursor is defined:
+  #
+  #   ActiveJob::Continuation::Cursor.build /
+  #     default: ->() { nil },
+  #     validate: ->(value) { raise "Cursor value must be an integer or nil" unless value.nil? || value.is_a?(Integer) },
+  #     advance: ->(value) { value + 1 }
+  #
+  # When the checkpoint! method is called, the cursor value is validated and then advanced.
+  #
+  # See the ActiveJob::Continuation::Cursor class for more information on how to define custom cursors.
+  #
+  # You might want checkpoint your work, but not need to track progress. For example if you are looping through records
+  # and destroying them.
+  #
+  # You can just call checkpoint! with no value to do this:
+  #
+  #   step(:destroy_records) do |step|
+  #     @import.records.find_each do |record|
+  #       record.destroy
+  #       step.checkpoint!
+  #     end
+  #   end
+  #
+  # There are implicit checkpoints at the end of each step that record that the step completed. Manual checkpoints are optional
+  # and are only needed if you want to track progress or interrupt the job within a step.
+  #
+  # === Interrupting and Resuming Jobs
+  #
+  # It is the job's responsibility to check whether it should be interrupted.
+  #
+  # It will check at two points:
+  # * When a step completes
+  # * When the checkpoint! method is called on a step.
+  #
+  # The job checks whether it should be interrupted, by calling the `stopping?` method
+  # on the queue adapter.
+  #
+  # If the queue adapter is stopping, the job will raise an ActiveJob::Continuation::Interrupt exception.
+  # This is an Exception, not a StandardError. It should not be rescued by the job.
+  #
+  # The job with be requeued for a retry with its progress serialized under the "continuation" key.
+  # The serialized progress contains a list of the completed steps, and the current step and its cursor value
+  # if one is in progress.
   class Continuation
     # Raised when a job is interrupted and needs to be resumed later
     class Interrupt < Exception; end
+
     # Base class for all continuation-related errors
     class Error < StandardError; end
-    # Raised when a step is invalid (e.g., duplicate name, wrong order)
+
+    # Raised when a step is invalid
     class InvalidStepError < Error; end
+
     # Raised when an invalid cursor value is provided
     class InvalidCursorError < Error; end
-    # Raised when a job advances to the next step but then fails
+
+    # Raised when a job advances and then raised a StandardError that is not a ActiveJob::Continuation::Error.
+    # The job will be automatically retried to ensure that the progress is serialized in the retried job.
     class AdvancedWithError < Error; end
 
     delegate :description, :advanced?, :to_h, to: :progress
@@ -37,11 +147,6 @@ module ActiveJob
       @resuming = @progress.started?
     end
 
-    # Continues execution of a job, handling any errors that might occur
-    # during execution and tracking progress through steps.
-    #
-    # Raises AdvancedWithError if the job made progress but then failed
-    # or passes through any other error that occurs during execution.
     def continue(&block)
       instrument :resume, progress: progress if resuming?
       block.call
@@ -53,9 +158,6 @@ module ActiveJob
       end
     end
 
-    # Executes a step in the job's process, tracking progress and managing resumption.
-    #
-    # Raises InvalidStepError if the step is invalid.
     def step(name, cursor_type:, &block)
       ensure_valid_step(name)
 
