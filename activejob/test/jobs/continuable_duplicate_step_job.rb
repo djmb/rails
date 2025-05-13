@@ -1,5 +1,5 @@
-class ContinuingDuplicateStepJob < ActiveJob::Base
-  include ActiveJob::Continuing
+class ContinuableDuplicateStepJob < ActiveJob::Base
+  include ActiveJob::Continuable
 
   def perform
     step :duplicate do |step|

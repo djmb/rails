@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "active_job/continuing"
+require "active_job/continuable"
 require "active_job/continuation/cursor"
 require "active_job/continuation/progress"
 require "active_job/continuation/step"
@@ -14,7 +14,7 @@ module ActiveJob
   # running step.
   #
   # This is used internally by Active Job and shouldn't normally be
-  # instantiated directly. Instead, include the ActiveJob::Continuing
+  # instantiated directly. Instead, include the ActiveJob::Continuable
   # module in your job class and use the +step+ method.
   class Continuation
     # Raised when a job is interrupted and needs to be resumed later

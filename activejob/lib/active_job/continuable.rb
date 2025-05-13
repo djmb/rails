@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 module ActiveJob
-  # = Active Job Continuing
+  # = Active Job Continuable
   #
-  # Continuing provides a mechanism for jobs to be broken down into steps
+  # Continuable provides a mechanism for jobs to be broken down into steps
   # that can be interrupted and resumed. This allows long-running jobs
   # to make incremental progress, and ensures they can recover automatically
   # from transient failures without repeating completed work.
@@ -11,7 +11,7 @@ module ActiveJob
   # Include this module in your job class to enable continuations:
   #
   #   class ProcessImportJob < ApplicationJob
-  #     include ActiveJob::Continuing
+  #     include ActiveJob::Continuable
   #
   #     def perform(import_id)
   #       import = Import.find(import_id)
@@ -32,7 +32,7 @@ module ActiveJob
   #
   # If the job is interrupted during execution (for example, by a worker
   # shutdown), it will automatically be retried and resumed from where it left off.
-  module Continuing
+  module Continuable
     extend ActiveSupport::Concern
 
     CONTINUATION_KEY = "continuation"

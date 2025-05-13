@@ -1,5 +1,5 @@
-class ContinuingDeleteJob < ActiveJob::Base
-  include ActiveJob::Continuing
+class ContinuableDeleteJob < ActiveJob::Base
+  include ActiveJob::Continuable
 
   retry_on StandardError, wait: 0, attempts: 3
 

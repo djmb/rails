@@ -1,5 +1,5 @@
-class ContinuingLinearJob < ActiveJob::Base
-  include ActiveJob::Continuing
+class ContinuableLinearJob < ActiveJob::Base
+  include ActiveJob::Continuable
 
   cattr_accessor :items
 

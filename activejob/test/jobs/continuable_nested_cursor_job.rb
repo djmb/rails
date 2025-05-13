@@ -1,15 +1,15 @@
-ContinuingNestedCursor = ActiveJob::Continuation::Cursor.build \
+ContinuableNestedCursor = ActiveJob::Continuation::Cursor.build \
   default: -> { [] },
   validate: ->(value) { raise "Cursor value must be an array of Integers" unless value.is_a?(Array) && value.all?(Integer) },
   advance: ->(value) { value.empty? ? value : value[0..-2] + [ value.last + 1 ] }
 
-class ContinuingNestedCursorJob < ActiveJob::Base
-  include ActiveJob::Continuing
+class ContinuableNestedCursorJob < ActiveJob::Base
+  include ActiveJob::Continuable
 
   cattr_accessor :nested_items
 
   def perform
-    step :updating_sub_items, cursor_type: ContinuingNestedCursor do |step|
+    step :updating_sub_items, cursor_type: ContinuableNestedCursor do |step|
       outer_counter = step.cursor[0] || 0
 
       nested_items[outer_counter..].each do |items|
