@@ -6,11 +6,26 @@ require "active_job/continuation/progress"
 require "active_job/continuation/step"
 
 module ActiveJob
+  # = Active Job Continuation
+  #
+  # The continuation provides the internal machinery for managing
+  # a job's progress through a sequence of steps. It tracks which
+  # steps have been completed and the current position within the
+  # running step.
+  #
+  # This is used internally by Active Job and shouldn't normally be
+  # instantiated directly. Instead, include the ActiveJob::Continuing
+  # module in your job class and use the +step+ method.
   class Continuation
+    # Raised when a job is interrupted and needs to be resumed later
     class Interrupt < Exception; end
+    # Base class for all continuation-related errors
     class Error < StandardError; end
+    # Raised when a step is invalid (e.g., duplicate name, wrong order)
     class InvalidStepError < Error; end
+    # Raised when an invalid cursor value is provided
     class InvalidCursorError < Error; end
+    # Raised when a job advances to the next step but then fails
     class AdvancedWithError < Error; end
 
     delegate :description, :advanced?, :to_h, to: :progress
@@ -22,6 +37,11 @@ module ActiveJob
       @resuming = @progress.started?
     end
 
+    # Continues execution of a job, handling any errors that might occur
+    # during execution and tracking progress through steps.
+    #
+    # Raises AdvancedWithError if the job made progress but then failed
+    # or passes through any other error that occurs during execution.
     def continue(&block)
       instrument :resume, progress: progress if resuming?
       block.call
@@ -33,6 +53,9 @@ module ActiveJob
       end
     end
 
+    # Executes a step in the job's process, tracking progress and managing resumption.
+    #
+    # Raises InvalidStepError if the step is invalid.
     def step(name, cursor_type:, &block)
       ensure_valid_step(name)
 

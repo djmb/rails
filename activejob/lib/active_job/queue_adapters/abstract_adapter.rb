@@ -15,6 +15,8 @@ module ActiveJob
         raise NotImplementedError
       end
 
+      # Returns whether the adapter is requesting job execution to stop.
+      # Used by the continuations feature to determine when to interrupt a job.
       def stopping?
         false
       end
