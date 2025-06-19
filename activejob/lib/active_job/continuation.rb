@@ -128,6 +128,20 @@ module ActiveJob
   #     end
   #   end
   #
+  # === Execution
+  #
+  # By default all steps will be executed inline in a single job execution.
+  #
+  # You can specify that a step should have its own execution by passing the +inline: false+ option.
+  #
+  # This is useful for uninterruptible long-running steps - it ensures that progress
+  # is serialized back into the job data before the step starts.
+  #
+  #   step :quick_step1
+  #   step :slow_step, inline: false
+  #   step :quick_step2
+  #   step :quick_step3
+  #
   # === Checkpoints
   #
   # A checkpoint is where a job can be interrupted. At a checkpoint the job will call
@@ -149,6 +163,21 @@ module ActiveJob
   # The serialized progress contains:
   # - a list of the completed steps
   # - the current step and its cursor value (if one is in progress)
+  #
+  # === Slow Steps
+  #
+  # Jobs should checkpoint frequently to ensure their progress is saved.
+  #
+  # If there is an unavoidable long-running step, you can use the +inline+ option to
+  # force an interrupt. This will serialize the progress into the job retry. On resumption the step
+  # will then run.
+  #
+  #   step :quick_step do
+  #     quick_thing
+  #   end
+  #   step :slow_step, inline: false do
+  #     slow_thing
+  #   end
   #
   # === Errors
   #
@@ -204,16 +233,17 @@ module ActiveJob
       @encountered = []
       @advanced = false
       @running_step = false
+      @inlining = true
     end
 
-    def step(name, start:, &block) # :nodoc:
+    def step(name, **options, &block) # :nodoc:
       validate_step!(name)
       encountered << name
 
       if completed?(name)
         skip_step(name)
       else
-        run_step(name, start: start, &block)
+        run_step(name, **options, &block)
       end
     end
 
@@ -243,7 +273,7 @@ module ActiveJob
     end
 
     def instrumentation
-      { description: description,
+      { progress: description,
         completed_steps: completed,
         current_step: current }
     end
@@ -253,6 +283,10 @@ module ActiveJob
 
       def running_step?
         @running_step
+      end
+
+      def inlining?
+        @inlining
       end
 
       def completed?(name)
@@ -267,7 +301,17 @@ module ActiveJob
         instrument :step_skipped, step: name
       end
 
-      def run_step(name, start:, &block)
+      def run_step(name, start: nil, inline: true, &block)
+        @inlining &&= inline
+
+        if inlining? || !advanced?
+          run_step_inline(name, start: start, &block)
+        else
+          job.interrupt!
+        end
+      end
+
+      def run_step_inline(name, start:, **options, &block)
         @running_step = true
         @current ||= new_step(name, start, resumed: false)
 

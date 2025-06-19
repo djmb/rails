@@ -258,7 +258,7 @@ class ActiveJob::TestContinuation < ActiveSupport::TestCase
       assert_no_match "Resuming", @logger.messages
       assert_match(/Step 'step_one' started/, @logger.messages)
       assert_match(/Step 'step_one' completed/, @logger.messages)
-      assert_match(/Interrupted ActiveJob::TestContinuation::LinearJob \(Job ID: [0-9a-f-]{36}\) after 'step_one'/, @logger.messages)
+      assert_match(/Interrupted ActiveJob::TestContinuation::LinearJob \(Job ID: [0-9a-f-]{36}\) after 'step_one': shutting down/, @logger.messages)
     end
 
     perform_enqueued_jobs
@@ -278,7 +278,7 @@ class ActiveJob::TestContinuation < ActiveSupport::TestCase
       assert_no_match "Resuming", @logger.messages
       assert_match(/Step 'rename' started/, @logger.messages)
       assert_match(/Step 'rename' interrupted at cursor '433'/, @logger.messages)
-      assert_match(/Interrupted ActiveJob::TestContinuation::IteratingJob \(Job ID: [0-9a-f-]{36}\) at 'rename', cursor '433'/, @logger.messages)
+      assert_match(/Interrupted ActiveJob::TestContinuation::IteratingJob \(Job ID: [0-9a-f-]{36}\) at 'rename', cursor '433': shutting down/, @logger.messages)
     end
 
     perform_enqueued_jobs
@@ -621,7 +621,7 @@ class ActiveJob::TestContinuation < ActiveSupport::TestCase
     end
   end
 
-  test "does not resume after an error" do
+  test "does not resume when there is no progress to save" do
     LimitedResumesJob.with(resume_errors_after_advancing: false) do
       LimitedResumesJob.perform_later(10)
 
@@ -649,6 +649,73 @@ class ActiveJob::TestContinuation < ActiveSupport::TestCase
         end
       end
     end
+  end
+
+  class OptionallyInlineJob < ContinuableJob
+    cattr_accessor :items, default: []
+
+    def perform(*inline)
+      step :step_one, inline: inline.include?(:step_one) do |step|
+        items << "step_one"
+      end
+      step :step_two, inline: inline.include?(:step_two) do |step|
+        items << "step_two"
+      end
+      step :step_three, inline: inline.include?(:step_three) do |step|
+        items << "step_three"
+      end
+      step :step_four, inline: inline.include?(:step_four) do |step|
+        items << "step_four"
+      end
+    end
+  end
+
+  test "runs non inline step separately" do
+    OptionallyInlineJob.items = []
+    OptionallyInlineJob.perform_later(:step_one, :step_two, :step_four)
+
+    assert_enqueued_jobs 1, only: OptionallyInlineJob do
+      perform_enqueued_jobs
+    end
+
+    assert_equal [ "step_one", "step_two" ], OptionallyInlineJob.items
+
+    assert_enqueued_jobs 1 do
+      perform_enqueued_jobs
+    end
+
+    assert_equal [ "step_one", "step_two", "step_three" ], OptionallyInlineJob.items
+
+    assert_enqueued_jobs 0 do
+      perform_enqueued_jobs
+    end
+
+    assert_equal [ "step_one", "step_two", "step_three", "step_four" ], OptionallyInlineJob.items
+    assert_match(/Interrupted ActiveJob::TestContinuation::OptionallyInlineJob \(Job ID: [0-9a-f-]{36}\) after 'step_two'/, @logger.messages)
+    assert_match(/Interrupted ActiveJob::TestContinuation::OptionallyInlineJob \(Job ID: [0-9a-f-]{36}\) after 'step_three'/, @logger.messages)
+  end
+
+  test "runs initial and final non inline steps separately" do
+    OptionallyInlineJob.items = []
+    OptionallyInlineJob.perform_later(:step_two, :step_three)
+
+    assert_enqueued_jobs 1, only: OptionallyInlineJob do
+      perform_enqueued_jobs
+    end
+
+    assert_equal [ "step_one" ], OptionallyInlineJob.items
+
+    assert_enqueued_jobs 1 do
+      perform_enqueued_jobs
+    end
+
+    assert_equal [ "step_one", "step_two", "step_three" ], OptionallyInlineJob.items
+
+    assert_enqueued_jobs 0 do
+      perform_enqueued_jobs
+    end
+
+    assert_equal [ "step_one", "step_two", "step_three", "step_four" ], OptionallyInlineJob.items
   end
 
   private
