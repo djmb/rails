@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module ActionMailbox
-  class Record < ActiveRecord::Base # :nodoc:
+  class Record < ActionMailbox.record_base_class.constantize # :nodoc:
     self.abstract_class = true
   end
 end

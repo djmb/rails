@@ -65,6 +65,12 @@ module ActionText
       end
     end
 
+    initializer "action_text.record" do
+      config.before_initialize do |app|
+        ActionText.record_base_class = app.config.action_text.record_base_class || "ActiveRecord::Base"
+      end
+    end
+
     initializer "action_text.renderer" do
       %i[action_controller_base action_mailer].each do |base|
         ActiveSupport.on_load(base) do

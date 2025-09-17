@@ -3,7 +3,7 @@
 # :markup: markdown
 
 module ActionText
-  class Record < ActiveRecord::Base # :nodoc:
+  class Record < ActionText.record_base_class.constantize # :nodoc:
     self.abstract_class = true
   end
 end

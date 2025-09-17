@@ -81,9 +81,11 @@ module ActiveStorage
       app.deprecators[:active_storage] = ActiveStorage.deprecator
     end
 
+
     initializer "active_storage.configs" do
       config.before_initialize do |app|
         ActiveStorage.touch_attachment_records = app.config.active_storage.touch_attachment_records != false
+        ActiveStorage.record_base_class = app.config.active_storage.record_base_class || "ActiveRecord::Base"
       end
 
       config.after_initialize do |app|

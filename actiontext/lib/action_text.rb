@@ -56,4 +56,6 @@ module ActionText
         defined?(Nokogiri::HTML5) ? Nokogiri::HTML5::DocumentFragment : Nokogiri::HTML4::DocumentFragment
     end
   end
+
+  mattr_accessor :record_base_class, default: "ActiveRecord::Base"
 end

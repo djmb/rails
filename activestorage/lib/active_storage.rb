@@ -352,8 +352,10 @@ module ActiveStorage
   ]
   mattr_accessor :unsupported_image_processing_arguments
 
-  mattr_accessor :service_urls_expire_in, default: 5.minutes
+  mattr_accessor :record_base_class, default: "ActiveRecord::Base"
   mattr_accessor :touch_attachment_records, default: true
+
+  mattr_accessor :service_urls_expire_in, default: 5.minutes
   mattr_accessor :urls_expire_in
 
   mattr_accessor :routes_prefix, default: "/rails/active_storage"

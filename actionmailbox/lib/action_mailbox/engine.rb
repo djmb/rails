@@ -36,5 +36,11 @@ module ActionMailbox
         ActionMailbox.storage_service = app.config.action_mailbox.storage_service
       end
     end
+
+    initializer "action_mailbox.record" do
+      config.before_initialize do |app|
+        ActionMailbox.record_base_class = app.config.action_mailbox.record_base_class || "ActiveRecord::Base"
+      end
+    end
   end
 end

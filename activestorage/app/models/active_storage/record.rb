@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class ActiveStorage::Record < ActiveRecord::Base # :nodoc:
+class ActiveStorage::Record < ActiveStorage.record_base_class.constantize # :nodoc:
   self.abstract_class = true
 end
 
