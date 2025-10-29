@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "active_record/database_configurations"
+require "benchmark"
 
 module ActiveRecord
   module Tasks # :nodoc:
@@ -441,7 +442,10 @@ module ActiveRecord
 
         with_temporary_pool(db_config, clobber: true) do
           if schema_up_to_date?(db_config, nil, file)
-            reset_tables(db_config, reset_method)
+            time = Benchmark.realtime do
+              reset_tables(db_config, reset_method)
+            end
+            $stdout.puts "Database '#{db_config.database}' reset with #{reset_method} in (#{time.round(3)}s)"
           else
             purge(db_config)
             load_schema(db_config, db_config.schema_format, file)
